@@ -390,7 +390,7 @@ def getCollectionItems(collectionId):
         params["start_after_rank"] = startAfterRank
 
     paginated = startAfterRank is not None or limit is not None or withPicture is not None
-    current_app.config["DB_URL"]="postgresql://coderize:CodeRize%232023@10.7.128.13:5000/panaramax"
+    current_app.config["DB_URL"]="postgresql://postgres:postgres@localhost/Panaramax"
     with psycopg.connect(current_app.config["DB_URL"], row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             # check on sequence
@@ -990,168 +990,168 @@ LEFT JOIN LATERAL (
         )
 
 
-@bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
-@auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
-def postCollectionItem_1(collectionId, account=None):
-    """Add a new picture in a given sequence
-    ---
-    tags:
-        - Upload
-    parameters:
-        - name: collectionId
-          in: path
-          description: ID of sequence to add this picture into
-          required: true
-          schema:
-            type: string
-    requestBody:
-        content:
-            multipart/form-data:
-                schema:
-                    $ref: '#/components/schemas/GeoVisioPostItem'
-    security:
-        - bearerToken: []
-        - cookieAuth: []
-    responses:
-        202:
-            description: the added picture metadata
-            content:
-                application/geo+json:
-                    schema:
-                        $ref: '#/components/schemas/GeoVisioItem'
-    """
+# @bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
+# @auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
+# def postCollectionItem_1(collectionId, account=None):
+#     """Add a new picture in a given sequence
+#     ---
+#     tags:
+#         - Upload
+#     parameters:
+#         - name: collectionId
+#           in: path
+#           description: ID of sequence to add this picture into
+#           required: true
+#           schema:
+#             type: string
+#     requestBody:
+#         content:
+#             multipart/form-data:
+#                 schema:
+#                     $ref: '#/components/schemas/GeoVisioPostItem'
+#     security:
+#         - bearerToken: []
+#         - cookieAuth: []
+#     responses:
+#         202:
+#             description: the added picture metadata
+#             content:
+#                 application/geo+json:
+#                     schema:
+#                         $ref: '#/components/schemas/GeoVisioItem'
+#     """
 
-    if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
-        raise errors.InvalidAPIUsage(_("Content type should be multipart/form-data"), status_code=415)
+#     if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
+#         raise errors.InvalidAPIUsage(_("Content type should be multipart/form-data"), status_code=415)
 
-    # Check if position was given
-    if request.form.get("position") is None:
-        raise errors.InvalidAPIUsage(_('Missing "position" parameter'), status_code=400)
-    else:
-        try:
-            position = int(request.form["position"])
-            if position <= 0:
-                raise ValueError()
-        except ValueError:
-            raise errors.InvalidAPIUsage(_("Position in sequence should be a positive integer"), status_code=400)
+#     # Check if position was given
+#     if request.form.get("position") is None:
+#         raise errors.InvalidAPIUsage(_('Missing "position" parameter'), status_code=400)
+#     else:
+#         try:
+#             position = int(request.form["position"])
+#             if position <= 0:
+#                 raise ValueError()
+#         except ValueError:
+#             raise errors.InvalidAPIUsage(_("Position in sequence should be a positive integer"), status_code=400)
 
-    # Check if datetime was given
-    ext_mtd = PictureMetadata()
-    if request.form.get("override_capture_time") is not None:
-        ext_mtd.capture_time = parse_datetime(
-            request.form.get("override_capture_time"),
-            error="Parameter `override_capture_time` is not a valid datetime, it should be an iso formated datetime (like '2017-07-21T17:32:28Z').",
-        )
+#     # Check if datetime was given
+#     ext_mtd = PictureMetadata()
+#     if request.form.get("override_capture_time") is not None:
+#         ext_mtd.capture_time = parse_datetime(
+#             request.form.get("override_capture_time"),
+#             error="Parameter `override_capture_time` is not a valid datetime, it should be an iso formated datetime (like '2017-07-21T17:32:28Z').",
+#         )
 
-    # Check if lat/lon were given
-    lon, lat = request.form.get("override_longitude"), request.form.get("override_latitude")
-    if lon is not None or lat is not None:
-        if lat is None:
-            raise errors.InvalidAPIUsage(_("Longitude cannot be overridden alone, override_latitude also needs to be set"))
-        if lon is None:
-            raise errors.InvalidAPIUsage(_("Latitude cannot be overridden alone, override_longitude also needs to be set"))
-        lon = as_longitude(lon, error=_("For parameter `override_longitude`, `%(v)s` is not a valid longitude", v=lon))
-        lat = as_latitude(lat, error=_("For parameter `override_latitude`, `%(v)s` is not a valid latitude", v=lat))
-        ext_mtd.longitude = lon
-        ext_mtd.latitude = lat
+#     # Check if lat/lon were given
+#     lon, lat = request.form.get("override_longitude"), request.form.get("override_latitude")
+#     if lon is not None or lat is not None:
+#         if lat is None:
+#             raise errors.InvalidAPIUsage(_("Longitude cannot be overridden alone, override_latitude also needs to be set"))
+#         if lon is None:
+#             raise errors.InvalidAPIUsage(_("Latitude cannot be overridden alone, override_longitude also needs to be set"))
+#         lon = as_longitude(lon, error=_("For parameter `override_longitude`, `%(v)s` is not a valid longitude", v=lon))
+#         lat = as_latitude(lat, error=_("For parameter `override_latitude`, `%(v)s` is not a valid latitude", v=lat))
+#         ext_mtd.longitude = lon
+#         ext_mtd.latitude = lat
 
-    # Check if others override elements were given
-    override_elmts = {}
-    for k, v in request.form.to_dict().items():
-        if not (k.startswith("override_Exif.") or k.startswith("override_Xmp.")):
-            continue
-        exif_tag = k.replace("override_", "")
-        override_elmts[exif_tag] = v
+#     # Check if others override elements were given
+#     override_elmts = {}
+#     for k, v in request.form.to_dict().items():
+#         if not (k.startswith("override_Exif.") or k.startswith("override_Xmp.")):
+#             continue
+#         exif_tag = k.replace("override_", "")
+#         override_elmts[exif_tag] = v
 
-    if override_elmts:
-        ext_mtd.additional_exif = override_elmts
+#     if override_elmts:
+#         ext_mtd.additional_exif = override_elmts
 
-    # Check if picture blurring status is valid
-    if request.form.get("isBlurred") is None or request.form.get("isBlurred") in ["true", "false"]:
-        isBlurred = request.form.get("isBlurred") == "true"
-    else:
-        raise errors.InvalidAPIUsage(_("Picture blur status should be either unset, true or false"), status_code=400)
+#     # Check if picture blurring status is valid
+#     if request.form.get("isBlurred") is None or request.form.get("isBlurred") in ["true", "false"]:
+#         isBlurred = request.form.get("isBlurred") == "true"
+#     else:
+#         raise errors.InvalidAPIUsage(_("Picture blur status should be either unset, true or false"), status_code=400)
 
-    # Check if a picture file was given
-    if "picture" not in request.files:
-        raise errors.InvalidAPIUsage(_("No picture file was sent"), status_code=400)
-    else:
-        picture = request.files["picture"]
+#     # Check if a picture file was given
+#     if "picture" not in request.files:
+#         raise errors.InvalidAPIUsage(_("No picture file was sent"), status_code=400)
+#     else:
+#         picture = request.files["picture"]
 
-        # Check file validity
-        if not (picture.filename != "" and "." in picture.filename and picture.filename.rsplit(".", 1)[1].lower() in ["jpg", "jpeg"]):
-            raise errors.InvalidAPIUsage(_("Picture file is either missing or in an unsupported format (should be jpg)"), status_code=400)
+#         # Check file validity
+#         if not (picture.filename != "" and "." in picture.filename and picture.filename.rsplit(".", 1)[1].lower() in ["jpg", "jpeg"]):
+#             raise errors.InvalidAPIUsage(_("Picture file is either missing or in an unsupported format (should be jpg)"), status_code=400)
 
-    with db.conn(current_app) as conn:
-        with conn.transaction(), conn.cursor() as cursor:
-            # Check if sequence exists
-            seq = cursor.execute("SELECT account_id, status FROM sequences WHERE id = %s", [collectionId]).fetchone()
-            if not seq:
-                raise errors.InvalidAPIUsage(_("Collection %(s)s wasn't found in database", s=collectionId), status_code=404)
+#     with db.conn(current_app) as conn:
+#         with conn.transaction(), conn.cursor() as cursor:
+#             # Check if sequence exists
+#             seq = cursor.execute("SELECT account_id, status FROM sequences WHERE id = %s", [collectionId]).fetchone()
+#             if not seq:
+#                 raise errors.InvalidAPIUsage(_("Collection %(s)s wasn't found in database", s=collectionId), status_code=404)
 
-            # Account associated to picture doesn't match current user
-            if account is not None and account.id != str(seq[0]):
-                raise errors.InvalidAPIUsage(_("You're not authorized to add picture to this collection"), status_code=403)
+#             # Account associated to picture doesn't match current user
+#             if account is not None and account.id != str(seq[0]):
+#                 raise errors.InvalidAPIUsage(_("You're not authorized to add picture to this collection"), status_code=403)
 
-            # Check if sequence has not been deleted
-            status = seq[1]
-            if status == "deleted":
-                raise errors.InvalidAPIUsage(_("The collection has been deleted, impossible to add pictures to it"), status_code=404)
+#             # Check if sequence has not been deleted
+#             status = seq[1]
+#             if status == "deleted":
+#                 raise errors.InvalidAPIUsage(_("The collection has been deleted, impossible to add pictures to it"), status_code=404)
 
-            # Compute various metadata
-            accountId = accountIdOrDefault(account)
-            raw_pic = picture.read()
-            filesize = len(raw_pic)
+#             # Compute various metadata
+#             accountId = accountIdOrDefault(account)
+#             raw_pic = picture.read()
+#             filesize = len(raw_pic)
 
-            with sentry_sdk.start_span(description="computing md5"):
-                # we save the content hash md5 as uuid since md5 is 128bit and uuid are efficiently handled in postgres
-                md5 = hashlib.md5(raw_pic).digest()
-                md5 = UUID(bytes=md5)
+#             with sentry_sdk.start_span(description="computing md5"):
+#                 # we save the content hash md5 as uuid since md5 is 128bit and uuid are efficiently handled in postgres
+#                 md5 = hashlib.md5(raw_pic).digest()
+#                 md5 = UUID(bytes=md5)
 
-            additionalMetadata = {
-                "blurredByAuthor": isBlurred,
-                "originalFileName": os.path.basename(picture.filename),
-                "originalFileSize": filesize,
-                "originalContentMd5": md5,
-            }
+#             additionalMetadata = {
+#                 "blurredByAuthor": isBlurred,
+#                 "originalFileName": os.path.basename(picture.filename),
+#                 "originalFileSize": filesize,
+#                 "originalContentMd5": md5,
+#             }
 
-            # Update picture metadata if needed
-            with sentry_sdk.start_span(description="overwriting metadata"):
-                updated_picture = writePictureMetadata(raw_pic, ext_mtd)
+#             # Update picture metadata if needed
+#             with sentry_sdk.start_span(description="overwriting metadata"):
+#                 updated_picture = writePictureMetadata(raw_pic, ext_mtd)
 
-            # Insert picture into database
-            with sentry_sdk.start_span(description="Insert picture in db"):
-                try:
-                    picId = utils.pictures.insertNewPictureInDatabase(
-                        conn, collectionId, position, updated_picture, accountId, additionalMetadata, lang=get_locale().language
-                    )
-                except utils.pictures.PicturePositionConflict:
-                    raise errors.InvalidAPIUsage(_("Picture at given position already exist"), status_code=409)
-                except utils.pictures.MetadataReadingError as e:
-                    raise errors.InvalidAPIUsage(_("Impossible to parse picture metadata"), payload={"details": {"error": e.details}})
-                except utils.pictures.InvalidMetadataValue as e:
-                    raise errors.InvalidAPIUsage(_("Picture has invalid metadata"), payload={"details": {"error": e.details}})
+#             # Insert picture into database
+#             with sentry_sdk.start_span(description="Insert picture in db"):
+#                 try:
+#                     picId = utils.pictures.insertNewPictureInDatabase(
+#                         conn, collectionId, position, updated_picture, accountId, additionalMetadata, lang=get_locale().language
+#                     )
+#                 except utils.pictures.PicturePositionConflict:
+#                     raise errors.InvalidAPIUsage(_("Picture at given position already exist"), status_code=409)
+#                 except utils.pictures.MetadataReadingError as e:
+#                     raise errors.InvalidAPIUsage(_("Impossible to parse picture metadata"), payload={"details": {"error": e.details}})
+#                 except utils.pictures.InvalidMetadataValue as e:
+#                     raise errors.InvalidAPIUsage(_("Picture has invalid metadata"), payload={"details": {"error": e.details}})
 
-            # Save file into appropriate filesystem
-            with sentry_sdk.start_span(description="Saving picture"):
-                try:
-                    utils.pictures.saveRawPicture(picId, updated_picture, isBlurred)
-                except:
-                    logging.exception("Picture wasn't correctly saved in filesystem")
-                    raise errors.InvalidAPIUsage(_("Picture wasn't correctly saved in filesystem"), status_code=500)
+#             # Save file into appropriate filesystem
+#             with sentry_sdk.start_span(description="Saving picture"):
+#                 try:
+#                     utils.pictures.saveRawPicture(picId, updated_picture, isBlurred)
+#                 except:
+#                     logging.exception("Picture wasn't correctly saved in filesystem")
+#                     raise errors.InvalidAPIUsage(_("Picture wasn't correctly saved in filesystem"), status_code=500)
 
-    current_app.background_processor.process_pictures()
+#     current_app.background_processor.process_pictures()
 
-    # Return picture metadata
-    return (
-        getCollectionItem(collectionId, picId)[0],
-        202,
-        {
-            "Content-Type": "application/json",
-            "Access-Control-Expose-Headers": "Location",  # Needed for allowing web browsers access Location header
-            "Location": url_for("stac_items.getCollectionItem", _external=True, collectionId=collectionId, itemId=picId),
-        },
-    )
+#     # Return picture metadata
+#     return (
+#         getCollectionItem(collectionId, picId)[0],
+#         202,
+#         {
+#             "Content-Type": "application/json",
+#             "Access-Control-Expose-Headers": "Location",  # Needed for allowing web browsers access Location header
+#             "Location": url_for("stac_items.getCollectionItem", _external=True, collectionId=collectionId, itemId=picId),
+#         },
+#     )
 
 
 class PatchItemParameter(BaseModel):
@@ -1478,6 +1478,232 @@ from gettext import gettext as translate
 
 
 
+# @bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
+# @auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
+# def postCollectionItem(collectionId, account=None):
+#     """
+#     Add a new picture in a given sequence
+#     """
+#     import os
+#     import pandas as pd
+
+#     if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
+#         raise errors.InvalidAPIUsage("Content type should be multipart/form-data", status_code=415)
+
+#     if "excel" not in request.files:
+#         raise errors.InvalidAPIUsage("No Excel file was sent", status_code=400)
+
+#     excel_file = request.files["excel"]
+#     try:
+#         df = pd.read_excel(excel_file)
+#     except Exception as e:
+#         raise errors.InvalidAPIUsage(f"Error reading Excel file: {str(e)}", status_code=400)
+
+#     required_columns = {'position', 'picture', 'override_capture_time', 'override_longitude', 'override_latitude'}
+#     if not required_columns.issubset(df.columns):
+#         raise errors.InvalidAPIUsage(f"Missing required columns: {required_columns - set(df.columns)}", status_code=400)
+
+#     processed_pictures = []
+
+#     for _, row in df.iterrows():
+#         position = row['position']
+#         picture_path = row['picture']
+
+#         if not os.path.exists(picture_path):
+#             raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found on the server.", status_code=400)
+
+#         with open(picture_path, "rb") as f:
+#             raw_pic = f.read()
+
+#         # Validate position
+#         try:
+#             position = int(position)
+#             if position <= 0:
+#                 raise ValueError()
+#         except ValueError:
+#             raise errors.InvalidAPIUsage("Position should be a positive integer", status_code=400)
+#         # Check if picture blurring status is valid
+#         isBlurred = False
+#         # Capture additional metadata if provided
+#         ext_mtd = PictureMetadata()
+#         if pd.notna(row.get('override_capture_time')):
+#             try:
+#                 # Parse the datetime
+#                 ext_mtd.capture_time = parse_datetime(
+#                     row['override_capture_time'],
+#                     error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z')."
+#                 )
+
+#                 # Check if timezone is valid
+#                 if ext_mtd.capture_time.tzinfo:
+#                     offset_minutes = ext_mtd.capture_time.utcoffset().total_seconds() / 60
+#                     if not (-12 * 60 <= offset_minutes <= 14 * 60):  # Valid range: -720 to 840 minutes
+#                         print(f"Invalid timezone detected: {offset_minutes / 60:+} hours. Removing timezone info.")
+#                         ext_mtd.capture_time = ext_mtd.capture_time.replace(tzinfo=None)  # Remove invalid timezone
+
+#             except Exception as e:
+#                 print(f"Error parsing datetime: {e}")
+
+#         if pd.notna(row.get('override_longitude')) and pd.notna(row.get('override_latitude')):
+#             lon = as_longitude(row['override_longitude'], error=translate("For parameter `override_longitude` is not a valid longitude"))
+#             lat = as_latitude(row['override_latitude'], error=translate("For parameter `override_latitude` is not a valid latitude"))
+
+#             ext_mtd.longitude = lon
+#             ext_mtd.latitude = lat
+
+#         # Compute MD5 hash
+#         md5 = hashlib.md5(raw_pic).digest()
+#         md5 = UUID(bytes=md5)
+
+#         # Compute various metadata
+#         accountId = accountIdOrDefault(account)
+#         ext_mtd.isBlurred='false'
+#         additionalMetadata = {
+#             "originalFileName": os.path.basename(picture_path),
+#             "originalFileSize": len(raw_pic),
+#             "originalContentMd5": md5,
+#         }
+
+#         processed_pictures.append((position, raw_pic, ext_mtd, additionalMetadata))
+
+#     # Process and save pictures
+#     with db.conn(current_app) as conn:
+#         with conn.transaction(), conn.cursor() as cursor:
+#             for position, raw_pic, ext_mtd, additionalMetadata in processed_pictures:
+                
+#                     updated_picture = writePictureMetadata(raw_pic, ext_mtd)
+#                    # print("**********updated_picture**********",updated_picture)
+#                     picId = utils.pictures.insertNewPictureInDatabase(
+#                         conn, collectionId, position, updated_picture, accountId, additionalMetadata
+#                     )
+                  
+#                     utils.pictures.saveRawPicture(picId, updated_picture,isBlurred='false')
+
+                
+
+#     current_app.background_processor.process_pictures()
+
+#     return ("Pictures processed successfully", 202)
+
+
+
+# @bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
+# @auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
+# def postCollectionItem(collectionId, account=None):
+#     """
+#     Add a new picture in a given sequence
+#     """
+#     import os
+#     import pandas as pd
+#     from datetime import timezone
+
+#     if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
+#         raise errors.InvalidAPIUsage("Content type should be multipart/form-data", status_code=415)
+
+#     if "excel" not in request.files:
+#         raise errors.InvalidAPIUsage("No Excel file was sent", status_code=400)
+
+#     excel_file = request.files["excel"]
+#     print("*************************excel_file****************************",excel_file)
+#     try:
+#         df = pd.read_excel(excel_file)
+#     except Exception as e:
+#         raise errors.InvalidAPIUsage(f"Error reading Excel file: {str(e)}", status_code=400)
+
+#     required_columns = {'picture', 'override_longitude', 'override_latitude'}
+#     if not required_columns.issubset(df.columns):
+#         raise errors.InvalidAPIUsage(f"Missing required columns: {required_columns - set(df.columns)}", status_code=400)
+
+#     processed_pictures = []
+
+#     # Start position from 1
+#     current_position = 1
+#     for _, row in df.iterrows():
+#         #position = row['position']
+#         picture_path = row['picture']
+
+#          # Assign and increment position
+#         position = current_position
+#         print("*****************************************************",position)
+#         current_position += 1
+#         if not os.path.exists(picture_path):
+#             raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found on the server.", status_code=400)
+
+#         with open(picture_path, "rb") as f:
+#             raw_pic = f.read()
+
+#         # Validate position
+#         # try:
+#         #     position = int(position)
+#         #     if position <= 0:
+#         #         raise ValueError()
+#         # except ValueError:
+#         #     raise errors.InvalidAPIUsage("Position should be a positive integer", status_code=400)
+#         # Check if picture blurring status is valid
+#         isBlurred = False
+#         #default_capture_time = datetime.now(timezone.utc).isoformat()
+#         # Capture additional metadata if provided
+#         ext_mtd = PictureMetadata()
+#         ext_mtd.capture_time = datetime.now(timezone.utc)
+#         # Try assigning capture time from Excel if provided (optional)
+#         # if pd.notna(row.get("override_capture_time")):
+#         #     ext_mtd.capture_time = parse_datetime(
+#         #         row["override_capture_time"],
+#         #         error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z').",
+#         #     )
+#         # else:
+#         #     ext_mtd.capture_time = datetime.now(timezone.utc).isoformat()
+
+#         if pd.notna(row.get('override_longitude')) and pd.notna(row.get('override_latitude')):
+#             lon = as_longitude(row['override_longitude'], error=translate("For parameter `override_longitude` is not a valid longitude"))
+#             lat = as_latitude(row['override_latitude'], error=translate("For parameter `override_latitude` is not a valid latitude"))
+
+#             ext_mtd.longitude = lon
+#             ext_mtd.latitude = lat
+
+#         # Compute MD5 hash
+#         md5 = hashlib.md5(raw_pic).digest()
+#         md5 = UUID(bytes=md5)
+
+#         # Compute various metadata
+#         accountId = accountIdOrDefault(account)
+#         ext_mtd.isBlurred='false'
+#         additionalMetadata = {
+#             "originalFileName": os.path.basename(picture_path),
+#             "originalFileSize": len(raw_pic),
+#             "originalContentMd5": md5,
+#         }
+
+#         processed_pictures.append((position, raw_pic, ext_mtd, additionalMetadata))
+
+#     # Process and save pictures
+#     with db.conn(current_app) as conn:
+#         with conn.transaction(), conn.cursor() as cursor:
+#             for position, raw_pic, ext_mtd, additionalMetadata in processed_pictures:
+                
+#                     updated_picture = writePictureMetadata(raw_pic, ext_mtd)
+#                    # print("**********updated_picture**********",updated_picture)
+#                     picId = utils.pictures.insertNewPictureInDatabase(
+#                         conn, collectionId, position, updated_picture, accountId, additionalMetadata
+#                     )
+                  
+#                     utils.pictures.saveRawPicture(picId, updated_picture,isBlurred='false')
+
+                
+
+#     current_app.background_processor.process_pictures()
+
+#     return ("Pictures processed successfully", 202)
+
+
+
+######################################################################################
+####################################################################################
+#####################################################################################
+#####################################################################################
+########################################################################################
+'''
+# from flask import request
 @bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
 @auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
 def postCollectionItem(collectionId, account=None):
@@ -1486,63 +1712,72 @@ def postCollectionItem(collectionId, account=None):
     """
     import os
     import pandas as pd
+    from datetime import timezone
+   
 
-    if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
-        raise errors.InvalidAPIUsage("Content type should be multipart/form-data", status_code=415)
+    # if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
+    #     raise errors.InvalidAPIUsage("Content type should be multipart/form-data", status_code=415)
+    if not request.is_json:
+        raise errors.InvalidAPIUsage("Request must be JSON", status_code=415)
+    excel_path = request.json.get("excel_path")
+    print("******************excel_path******************",excel_path)
+    if not excel_path or not os.path.exists(excel_path):
+        raise errors.InvalidAPIUsage("Excel file path not provided or file does not exist", status_code=400)
 
-    if "excel" not in request.files:
-        raise errors.InvalidAPIUsage("No Excel file was sent", status_code=400)
-
-    excel_file = request.files["excel"]
     try:
-        df = pd.read_excel(excel_file)
+        df = pd.read_excel(excel_path)
     except Exception as e:
         raise errors.InvalidAPIUsage(f"Error reading Excel file: {str(e)}", status_code=400)
 
-    required_columns = {'position', 'picture', 'override_capture_time', 'override_longitude', 'override_latitude'}
+
+    required_columns = {'picture', 'override_longitude', 'override_latitude'}
+    print("******************required_columns******************",required_columns)
     if not required_columns.issubset(df.columns):
         raise errors.InvalidAPIUsage(f"Missing required columns: {required_columns - set(df.columns)}", status_code=400)
 
     processed_pictures = []
 
+   
+   # Get the current last position in the collection
+ 
     for _, row in df.iterrows():
         position = row['position']
         picture_path = row['picture']
+        picture_path = row['picture']
 
-        if not os.path.exists(picture_path):
-            raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found on the server.", status_code=400)
+        # position = current_position
+        # current_position += 1  # Increment for next row
+        #  # Assign and increment position
+        # position = current_position
+        # print("*****************************************************",position)
+        # current_position += 1
+        # if not os.path.exists(picture_path):
+        #     raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found on the server.", status_code=400)
 
         with open(picture_path, "rb") as f:
             raw_pic = f.read()
 
         # Validate position
-        try:
-            position = int(position)
-            if position <= 0:
-                raise ValueError()
-        except ValueError:
-            raise errors.InvalidAPIUsage("Position should be a positive integer", status_code=400)
+        # try:
+        #     position = int(position)
+        #     if position <= 0:
+        #         raise ValueError()
+        # except ValueError:
+        #     raise errors.InvalidAPIUsage("Position should be a positive integer", status_code=400)
         # Check if picture blurring status is valid
         isBlurred = False
+        #default_capture_time = datetime.now(timezone.utc).isoformat()
         # Capture additional metadata if provided
         ext_mtd = PictureMetadata()
-        if pd.notna(row.get('override_capture_time')):
-            try:
-                # Parse the datetime
-                ext_mtd.capture_time = parse_datetime(
-                    row['override_capture_time'],
-                    error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z')."
-                )
-
-                # Check if timezone is valid
-                if ext_mtd.capture_time.tzinfo:
-                    offset_minutes = ext_mtd.capture_time.utcoffset().total_seconds() / 60
-                    if not (-12 * 60 <= offset_minutes <= 14 * 60):  # Valid range: -720 to 840 minutes
-                        print(f"Invalid timezone detected: {offset_minutes / 60:+} hours. Removing timezone info.")
-                        ext_mtd.capture_time = ext_mtd.capture_time.replace(tzinfo=None)  # Remove invalid timezone
-
-            except Exception as e:
-                print(f"Error parsing datetime: {e}")
+      #  ext_mtd.capture_time = datetime.now(timezone.utc)
+        #Try assigning capture time from Excel if provided (optional)
+        if pd.notna(row.get("override_capture_time")):
+            ext_mtd.capture_time = parse_datetime(
+                row["override_capture_time"],
+                error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z').",
+            )
+        else:
+            ext_mtd.capture_time = datetime.now(timezone.utc).isoformat()
 
         if pd.notna(row.get('override_longitude')) and pd.notna(row.get('override_latitude')):
             lon = as_longitude(row['override_longitude'], error=translate("For parameter `override_longitude` is not a valid longitude"))
@@ -1584,3 +1819,99 @@ def postCollectionItem(collectionId, account=None):
     current_app.background_processor.process_pictures()
 
     return ("Pictures processed successfully", 202)
+'''
+
+
+@bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
+@auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
+def postCollectionItem(collectionId, account=None):
+    """
+    Upload pictures from Excel where each row has a file path.
+    Supports large-scale uploads (50k+).
+    """
+    import os
+    import pandas as pd
+    import hashlib
+    from datetime import datetime, timezone
+    from uuid import UUID
+    import json
+    from flask import Response
+
+    if not request.is_json:
+        raise errors.InvalidAPIUsage("Request must be JSON", status_code=415)
+
+    excel_path = request.json.get("excel_path")
+    print("******************excel_path******************",excel_path)
+    if not excel_path or not os.path.exists(excel_path):
+        raise errors.InvalidAPIUsage("Excel file path not provided or file does not exist", status_code=400)
+
+    try:
+        df = pd.read_excel(excel_path)
+    except Exception as e:
+        raise errors.InvalidAPIUsage(f"Error reading Excel file: {str(e)}", status_code=400)
+
+    required_columns = {'picture', 'override_longitude', 'override_latitude'}
+    print("******************required_columns******************",required_columns)
+    if not required_columns.issubset(df.columns):
+        raise errors.InvalidAPIUsage(f"Missing required columns: {required_columns - set(df.columns)}", status_code=400)
+
+    processed_pictures = []
+
+    for _, row in df.iterrows():
+        position = row.get('position')
+        picture_path = row.get('picture')
+        position = row.get('position')
+
+        if not picture_path or not os.path.exists(picture_path):
+            raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found.", status_code=400)
+        
+         # Compute MD5 from disk
+        with open(picture_path, "rb") as f:
+            raw_pic = f.read()
+           
+        isBlurred = False
+        # Metadata
+        ext_mtd = PictureMetadata()
+        #Try assigning capture time from Excel if provided (optional)
+        if pd.notna(row.get("override_capture_time")):
+            ext_mtd.capture_time = parse_datetime(
+                row["override_capture_time"],
+                error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z').",
+            )
+        else:
+            ext_mtd.capture_time = datetime.now(timezone.utc).isoformat()
+
+        if pd.notna(row.get('override_longitude')) and pd.notna(row.get('override_latitude')):
+            lon = as_longitude(row['override_longitude'], error=translate("For parameter `override_longitude` is not a valid longitude"))
+            lat = as_latitude(row['override_latitude'], error=translate("For parameter `override_latitude` is not a valid latitude"))
+
+            ext_mtd.longitude = lon
+            ext_mtd.latitude = lat
+
+        md5 = UUID(bytes=hashlib.md5(raw_pic).digest())
+      #  md5 = UUID(bytes=md5)
+
+        accountId = accountIdOrDefault(account)
+        additionalMetadata = {
+            "originalFileName": os.path.basename(picture_path),
+            "originalFileSize": len(raw_pic),
+            "originalContentMd5": md5,
+        }
+
+        processed_pictures.append((position, picture_path, raw_pic, ext_mtd, additionalMetadata))
+
+    # Save all pictures
+    with db.conn(current_app) as conn:
+        with conn.transaction(), conn.cursor() as cursor:
+            for position, picture_path, raw_pic, ext_mtd, additionalMetadata in processed_pictures:
+                updated_picture = writePictureMetadata(raw_pic, ext_mtd)
+
+                picId = utils.pictures.insertNewPictureInDatabase(
+                    conn, collectionId, position, updated_picture, accountId, additionalMetadata
+                )
+
+                utils.pictures.saveRawPictureFromPath(picId, picture_path, isBlurred=False)
+
+    current_app.background_processor.process_pictures()
+    response_data = {"status": "success", "message": f"{len(processed_pictures)} pictures processed."}
+    return Response(json.dumps(response_data), status=201, mimetype='application/json')
