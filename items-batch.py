@@ -1957,7 +1957,7 @@ def postCollectionItem(collectionId, account=None):
          # ‚è±Ô∏è Log every minute
         if time.time() - start_time >= 60:
             remaining = len(df[df['is_processed'] == False])
-            print(f"[{int(time.time() - start_time)}s] ‚úÖ Processed: {success_count}, ‚ùå Errors: {error_count}, Ì†ΩÌµó Remaining: {remaining}")
+            print(f"[{round(time.time() - start_time, 2)}s] ‚úÖ Processed: {success_count}, ‚ùå Errors: {error_count}, \ED\A0\BD\ED\B5\97 Remaining: {remaining}")
             start_time = time.time()
     current_app.background_processor.process_pictures()
 
@@ -1985,5 +1985,4 @@ def postCollectionItem(collectionId, account=None):
     # current_app.background_processor.process_pictures()
     # response_data = {"status": "success", "message": f"{len(processed_pictures)} pictures processed."}
     # return Response(json.dumps(response_data), status=201, mimetype='application/json')
-
 
