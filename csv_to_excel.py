@@ -38,6 +38,6 @@ def convert_semicolon_csv_to_excel(csv_file_path, excel_file_path=None):
     print(f"Converted: {csv_file_path} → {excel_file_path}")
 
 # Example usage
-csv_path = r"/home/administrator/Street_View/geovisio/fgic_streetview_data/Leica_Topcon/Leica-2019-JUL-11_AbuDhabiUpdate/panorama1/import/import_locations.csv"
-excel_path = r"/home/administrator/Street_View/geovisio/fgic_streetview_data/Leica_Topcon/Leica-2019-JUL-11_AbuDhabiUpdate/panorama1/import/output.xlsx"
+csv_path = r"/home/ladsadmin/streetview-data-orig/smb-streetview-data-original/Leica-2018-DEC-05_MusafahReSurveyM/panorama1/import/import_locations.csv"
+excel_path = r"/home/ladsadmin/streetview-data-orig/smb-streetview-data-original/Leica-2018-DEC-05_MusafahReSurveyM/panorama1/import/output.xlsx"
 convert_semicolon_csv_to_excel(csv_path, excel_path)
