@@ -1822,154 +1822,154 @@ def postCollectionItem(collectionId, account=None):
 '''
 
 # currently working commented by 10 june morning 10:45  
-'''
-@bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
-@auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
-def postCollectionItem(collectionId, account=None):
-    """
-    Upload pictures from Excel where each row has a file path.
-    Supports large-scale uploads (50k+).
-    """
-    import os
-    import pandas as pd
-    import hashlib
-    from datetime import datetime, timezone
-    from uuid import UUID
-    import json
-    from flask import Response
-    import time
 
-    if not request.is_json:
-        raise errors.InvalidAPIUsage("Request must be JSON", status_code=415)
+# @bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
+# @auth.login_required_by_setting("API_FORCE_AUTH_ON_UPLOAD")
+# def postCollectionItem(collectionId, account=None):
+#     """
+#     Upload pictures from Excel where each row has a file path.
+#     Supports large-scale uploads (50k+).
+#     """
+#     import os
+#     import pandas as pd
+#     import hashlib
+#     from datetime import datetime, timezone
+#     from uuid import UUID
+#     import json
+#     from flask import Response
+#     import time
 
-    excel_path = request.json.get("excel_path")
-    print("******************excel_path******************",excel_path)
-    if not excel_path or not os.path.exists(excel_path):
-        raise errors.InvalidAPIUsage("Excel file path not provided or file does not exist", status_code=400)
+#     if not request.is_json:
+#         raise errors.InvalidAPIUsage("Request must be JSON", status_code=415)
 
-    try:
-        df = pd.read_excel(excel_path)
-    except Exception as e:
-        raise errors.InvalidAPIUsage(f"Error reading Excel file: {str(e)}", status_code=400)
+#     excel_path = request.json.get("excel_path")
+#     print("******************excel_path******************",excel_path)
+#     if not excel_path or not os.path.exists(excel_path):
+#         raise errors.InvalidAPIUsage("Excel file path not provided or file does not exist", status_code=400)
 
-    required_columns = {'picture', 'override_longitude', 'override_latitude'}
-    print("******************required_columns******************",required_columns)
-    if not required_columns.issubset(df.columns):
-        raise errors.InvalidAPIUsage(f"Missing required columns: {required_columns - set(df.columns)}", status_code=400)
+#     try:
+#         df = pd.read_excel(excel_path)
+#     except Exception as e:
+#         raise errors.InvalidAPIUsage(f"Error reading Excel file: {str(e)}", status_code=400)
 
-    if 'is_processed' not in df.columns:
-        df['is_processed'] = False
+#     required_columns = {'picture', 'override_longitude', 'override_latitude'}
+#     print("******************required_columns******************",required_columns)
+#     if not required_columns.issubset(df.columns):
+#         raise errors.InvalidAPIUsage(f"Missing required columns: {required_columns - set(df.columns)}", status_code=400)
 
-    processed_pictures = []
+#     if 'is_processed' not in df.columns:
+#         df['is_processed'] = False
 
-    accountId = accountIdOrDefault(account)
-    batch_size = 100
-    success_count = 0
-    error_count = 0
-    start_time = time.time()
-    total = len(df)
-    # for _, row in df.iterrows():
-    #     position = row.get('position')
-    #     picture_path = row.get('picture')
-    #     position = row.get('position')
+#     processed_pictures = []
 
-    #     if not picture_path or not os.path.exists(picture_path):
-    #         raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found.", status_code=400)
+#     accountId = accountIdOrDefault(account)
+#     batch_size = 100
+#     success_count = 0
+#     error_count = 0
+#     start_time = time.time()
+#     total = len(df)
+#     # for _, row in df.iterrows():
+#     #     position = row.get('position')
+#     #     picture_path = row.get('picture')
+#     #     position = row.get('position')
+
+#     #     if not picture_path or not os.path.exists(picture_path):
+#     #         raise errors.InvalidAPIUsage(f"Picture file {picture_path} not found.", status_code=400)
         
-    #      # Compute MD5 from disk
-    #     with open(picture_path, "rb") as f:
-    #         raw_pic = f.read()
+#     #      # Compute MD5 from disk
+#     #     with open(picture_path, "rb") as f:
+#     #         raw_pic = f.read()
 
-    for start in range(0, total, batch_size):
-        end = min(start + batch_size, total)
-        batch_df = df.iloc[start:end]
+#     for start in range(0, total, batch_size):
+#         end = min(start + batch_size, total)
+#         batch_df = df.iloc[start:end]
 
-        with db.conn(current_app) as conn:
-            with conn.transaction(), conn.cursor() as cursor:
-                for idx in batch_df.index:
-                    row = df.loc[idx]
+#         with db.conn(current_app) as conn:
+#             with conn.transaction(), conn.cursor() as cursor:
+#                 for idx in batch_df.index:
+#                     row = df.loc[idx]
 
-                    if row['is_processed'] == True:
-                        continue
+#                     if row['is_processed'] == True:
+#                         continue
 
-                    picture_path = row.get('picture')
-                    position = row.get('position')
-                    try:
-                        position = int(position) if pd.notna(position) else None
-                    except Exception as e:
-                        print(f"‚ö†Ô∏è Skipping row due to invalid position: {e}")
-                        error_count += 1
-                        continue
+#                     picture_path = row.get('picture')
+#                     position = row.get('position')
+#                     try:
+#                         position = int(position) if pd.notna(position) else None
+#                     except Exception as e:
+#                         print(f"‚ö†Ô∏è Skipping row due to invalid position: {e}")
+#                         error_count += 1
+#                         continue
 
-                    if not picture_path or not os.path.exists(picture_path):
-                        print(f"‚ùå File not found: {picture_path}")
-                        error_count += 1
-                        continue
+#                     if not picture_path or not os.path.exists(picture_path):
+#                         print(f"‚ùå File not found: {picture_path}")
+#                         error_count += 1
+#                         continue
 
-                    try:
-                        with open(picture_path, "rb") as f:
-                            raw_pic = f.read()
+#                     try:
+#                         with open(picture_path, "rb") as f:
+#                             raw_pic = f.read()
            
-                        isBlurred = False
-                        # Metadata
-                        ext_mtd = PictureMetadata()
-                        #Try assigning capture time from Excel if provided (optional)
-                        if pd.notna(row.get("override_capture_time")):
-                            ext_mtd.capture_time = parse_datetime(
-                                row["override_capture_time"],
-                                error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z').",
-                            )
-                        else:
-                            ext_mtd.capture_time = datetime.now(timezone.utc).isoformat()
+#                         isBlurred = False
+#                         # Metadata
+#                         ext_mtd = PictureMetadata()
+#                         #Try assigning capture time from Excel if provided (optional)
+#                         if pd.notna(row.get("override_capture_time")):
+#                             ext_mtd.capture_time = parse_datetime(
+#                                 row["override_capture_time"],
+#                                 error="Parameter `override_capture_time` is not a valid datetime, it should be an ISO formatted datetime (like '2017-07-21T17:32:28Z').",
+#                             )
+#                         else:
+#                             ext_mtd.capture_time = datetime.now(timezone.utc).isoformat()
 
-                        if pd.notna(row.get('override_longitude')) and pd.notna(row.get('override_latitude')):
-                            lon = as_longitude(row['override_longitude'], error=translate("For parameter `override_longitude` is not a valid longitude"))
-                            lat = as_latitude(row['override_latitude'], error=translate("For parameter `override_latitude` is not a valid latitude"))
+#                         if pd.notna(row.get('override_longitude')) and pd.notna(row.get('override_latitude')):
+#                             lon = as_longitude(row['override_longitude'], error=translate("For parameter `override_longitude` is not a valid longitude"))
+#                             lat = as_latitude(row['override_latitude'], error=translate("For parameter `override_latitude` is not a valid latitude"))
 
-                            ext_mtd.longitude = lon
-                            ext_mtd.latitude = lat
+#                             ext_mtd.longitude = lon
+#                             ext_mtd.latitude = lat
 
-                        md5 = UUID(bytes=hashlib.md5(raw_pic).digest())
-                    #  md5 = UUID(bytes=md5)
+#                         md5 = UUID(bytes=hashlib.md5(raw_pic).digest())
+#                     #  md5 = UUID(bytes=md5)
 
-                        accountId = accountIdOrDefault(account)
-                        additionalMetadata = {
-                            "originalFileName": os.path.basename(picture_path),
-                            "originalFileSize": len(raw_pic),
-                            "originalContentMd5": md5,
-                        }
-                        updated_picture = writePictureMetadata(raw_pic, ext_mtd)
+#                         accountId = accountIdOrDefault(account)
+#                         additionalMetadata = {
+#                             "originalFileName": os.path.basename(picture_path),
+#                             "originalFileSize": len(raw_pic),
+#                             "originalContentMd5": md5,
+#                         }
+#                         updated_picture = writePictureMetadata(raw_pic, ext_mtd)
 
-                        picId = utils.pictures.insertNewPictureInDatabase(
-                            conn, collectionId, position, updated_picture, accountId, additionalMetadata
-                        )
+#                         picId = utils.pictures.insertNewPictureInDatabase(
+#                             conn, collectionId, position, updated_picture, accountId, additionalMetadata
+#                         )
 
-                        utils.pictures.saveRawPictureFromPath(picId, picture_path, isBlurred=False)
-                        df.at[idx, 'is_processed'] = True
-                        success_count += 1
+#                         utils.pictures.saveRawPictureFromPath(picId, picture_path, isBlurred=False)
+#                         df.at[idx, 'is_processed'] = True
+#                         success_count += 1
 
-                    except Exception as e:
-                        print(f"‚ùå Failed to process image at {picture_path}: {e}")
-                        error_count += 1
+#                     except Exception as e:
+#                         print(f"‚ùå Failed to process image at {picture_path}: {e}")
+#                         error_count += 1
 
-        # Save back progress to Excel
-        df.to_excel(excel_path, index=False)
+#         # Save back progress to Excel
+#         df.to_excel(excel_path, index=False)
 
-         # ‚è±Ô∏è Log every minute
-        if time.time() - start_time >= 60:
-            remaining = len(df[df['is_processed'] == False])
-            print(f"[{round(time.time() - start_time, 2)}s] ‚úÖ Processed: {success_count}, ‚ùå Errors: {error_count}, Ì†ΩÌµó Remaining: {remaining}")
-            start_time = time.time()
-    current_app.background_processor.process_pictures()
+#          # ‚è±Ô∏è Log every minute
+#         if time.time() - start_time >= 60:
+#             remaining = len(df[df['is_processed'] == False])
+#             print(f"[{round(time.time() - start_time, 2)}s] ‚úÖ Processed: {success_count}, ‚ùå Errors: {error_count}, ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ Remaining: {remaining}")
+#             start_time = time.time()
+#     current_app.background_processor.process_pictures()
 
-    response_data = {
-        "status": "success",
-        "total": total,
-        "processed": success_count,
-        "errors": error_count,
-        "message": f"{success_count} pictures processed, {error_count} failed."
-    }
-    return Response(json.dumps(response_data), status=201, mimetype='application/json')
+#     response_data = {
+#         "status": "success",
+#         "total": total,
+#         "processed": success_count,
+#         "errors": error_count,
+#         "message": f"{success_count} pictures processed, {error_count} failed."
+#     }
+#     return Response(json.dumps(response_data), status=201, mimetype='application/json')
 
     # # Save all pictures
     # with db.conn(current_app) as conn:
@@ -1986,7 +1986,7 @@ def postCollectionItem(collectionId, account=None):
     # current_app.background_processor.process_pictures()
     # response_data = {"status": "success", "message": f"{len(processed_pictures)} pictures processed."}
     # return Response(json.dumps(response_data), status=201, mimetype='application/json')
-'''
+
 
 
 @bp.route("/collections/<uuid:collectionId>/items", methods=["POST"])
@@ -2103,7 +2103,7 @@ def postCollectionItem(collectionId, account=None):
         # Log progress every 0.1 sec (for testing)
         if time.time() - start_time >= 60:
             remaining = len(df[df['is_processed'] == False])
-            print(f"[{round(time.time() - start_time, 2)}s] ‚úÖ Processed: {success_count}, ‚ùå Errors: {error_count}, Ì†ΩÌµó Remaining: {remaining}")
+            print(f"[{round(time.time() - start_time, 2)}s] ‚úÖ Processed: {success_count}, ‚ùå Errors: {error_count}, ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ Remaining: {remaining}")
             start_time = time.time()
 
     # Safely restore any originally TRUE values (in case anything was accidentally reset)
@@ -2123,5 +2123,4 @@ def postCollectionItem(collectionId, account=None):
         "message": f"{success_count} pictures processed, {error_count} failed."
     }
     return Response(json.dumps(response_data), status=201, mimetype='application/json')
-
 
