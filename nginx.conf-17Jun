@@ -1,0 +1,199 @@
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+	worker_connections 768;
+	# multi_accept on;
+}
+
+http {
+
+	##
+	# Basic Settings
+	##
+	
+#	upstream backend {
+#		server 10.7.64.11:8080;
+#	}
+	
+	upstream grafana-backend {
+#		server 10.7.64.11:3000;
+		server 10.7.64.12:3000;
+		server 10.7.64.13:3000;
+		server 10.7.64.14:3000;
+	}
+
+       upstream airflow {
+		server 10.7.64.11:8080;
+                server 10.7.64.12:8080;
+		server 10.7.64.13:8080;
+		server 10.7.64.14:8080;
+       }
+
+
+	upstream backend-api {
+		server 10.7.64.11:8000;
+		server 10.7.64.12:8000;
+		server 10.7.64.13:8000;
+		server 10.7.64.14:8000;
+	}
+
+	map $http_upgrade $connection_upgrade {
+		default upgrade;
+		'' close;
+	}
+	
+
+	sendfile on;
+	tcp_nopush on;
+	types_hash_max_size 2048;
+	server_tokens off;
+
+	# server_names_hash_bucket_size 64;
+	# server_name_in_redirect off;
+
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+	##
+	# SSL Settings
+	##
+
+	ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+	ssl_prefer_server_ciphers on;
+
+	##
+	# Logging Settings
+	##
+
+	access_log /var/log/nginx/access.log;
+	error_log /var/log/nginx/error.log;
+
+	##
+	# Gzip Settings
+	##
+
+	gzip on;
+
+	# gzip_vary on;
+	# gzip_proxied any;
+	# gzip_comp_level 6;
+	# gzip_buffers 16 8k;
+	# gzip_http_version 1.1;
+	# gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+	##
+	# Virtual Host Configs
+	##
+
+	server {
+		
+		listen 80;
+		server_name iadsweb.fgic.gov.ae 10.2.0.226;
+#10.7.0.11;
+		add_header Access-Control-Allow-Origin *;
+
+		location /airflow/ {
+			proxy_pass http://airflow;
+		#	proxy_pass http://10.7.64.14:8080;
+			include proxy_params;
+			proxy_set_header Host $host;
+			proxy_set_header X-Real-IP $remote_addr;
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header X-Forwarded-Proto $scheme;
+		}
+		
+		location / {
+			proxy_pass http://grafana-backend;
+#			proxy_pass http://10.7.64.11:3000;
+			include proxy_params;
+#			proxy_set_header Host $http_host;
+#			proxy_set_header X-CSRFToken $http_x_csrf_token;
+#			proxy_set_header X-Requested-With $http_x_requested_with;
+
+		#Added to check CSRF Issue
+		#	proxy_set_header User-Agent "Mozilla/5.0";
+#			add_header X-Frame-Options "DENY";
+#			add_header X-Content-Type-Options "nosniff";
+#			add_header X-XSS-Protection "1; mode=block";
+		}
+
+#		location /api/live/ {
+#			proxy_http_version 1.1;
+#			proxy_set_header Upgrade $http_upgrade;
+#			proxy_set_header Connection $connection_upgrade;
+#			proxy_set_header Host $http_host;
+#			proxy_pass http://10.7.64.11:3000;
+#		}
+		
+		location /stgrasterstore/ {
+#			proxy_pass http://10.7.64.11;
+#			proxy_set_header Host $host;
+			autoindex on;
+			alias /mnt/nfsstgrasterstore/;
+		}
+		
+		location /clipped/ {
+			alias /mnt/nfsstgrasterstore/clipped_images/;
+		}
+		
+		location /stgapi/ {
+#			proxy_pass http://10.7.64.11:8000/;
+			proxy_pass http://backend-api/;
+#			include proxy_params;
+			proxy_set_header Host $host;
+			proxy_set_header X-Real-IP $remote_addr;
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header X-Forwarded-Proto $scheme;
+		}
+
+#		location /streetview/ {
+#			proxy_pass http://10.7.64.16:5000;
+#			proxy_set_header X-Forwarded-Host $host;
+#			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#		}
+		
+		location ^~ /streetview/api/ {
+			rewrite ^/streetview/api/(.*)$ /api/$1 break;
+			proxy_pass http://10.7.64.16:5000/api/;
+			proxy_set_header X-Forwarded-Host $host;
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		}
+		
+		location ~ ^/streetview/api/map/([0-9]+)/(.+)$ {
+			rewrite ^/streetview/api/map/([0-9]+)/(.+)$ /api/map/$1/$1 break;
+			proxy_pass http://10.7.64.16:5000/api/map/$1/$2;
+			proxy_set_header Host $host;
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		}	
+
+	
+	}
+
+	include /etc/nginx/conf.d/*.conf;
+#	include /etc/nginx/sites-enabled/*;
+}
+
+
+#mail {
+#	# See sample authentication script at:
+#	# http://wiki.nginx.org/ImapAuthenticateWithApachePhpScript
+#
+#	# auth_http localhost/auth.php;
+#	# pop3_capabilities "TOP" "USER";
+#	# imap_capabilities "IMAP4rev1" "UIDPLUS";
+#
+#	server {
+#		listen     localhost:110;
+#		protocol   pop3;
+#		proxy      on;
+#	}
+#
+#	server {
+#		listen     localhost:143;
+#		protocol   imap;
+#		proxy      on;
+#	}
+#}
